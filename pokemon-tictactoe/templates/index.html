@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PokéBattle Tac-Toe</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --neon-blue: #00d4ff;
+  --neon-purple: #b44fff;
+  --neon-cyan: #00ffee;
+  --neon-yellow: #ffd700;
+  --bg-dark: #050510;
+  --bg-card: rgba(255,255,255,0.04);
+  --bg-card-hover: rgba(255,255,255,0.08);
+  --border-glow: rgba(0,212,255,0.3);
+  --text-primary: #e8f4ff;
+  --text-muted: rgba(232,244,255,0.5);
+  --glass-blur: blur(16px);
+  --shadow-neon: 0 0 20px rgba(0,212,255,0.4), 0 0 60px rgba(0,212,255,0.1);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'Rajdhani', sans-serif;
+  background: var(--bg-dark);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ===== CANVAS BG ===== */
+#bg-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ===== SCREENS ===== */
+.screen {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.screen.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.95);
+}
+
+/* ===== LANDING ===== */
+#landing {
+  gap: 2rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+.landing-mascots {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.float-poke {
+  position: absolute;
+  font-size: clamp(3rem, 6vw, 5rem);
+  opacity: 0.18;
+  animation: floatPoke 8s ease-in-out infinite;
+  filter: blur(1px);
+}
+
+@keyframes floatPoke {
+  0%,100% { transform: translateY(0) rotate(-5deg); }
+  50% { transform: translateY(-30px) rotate(5deg); }
+}
+
+.landing-logo {
+  position: relative;
+  z-index: 2;
+}
+
+.logo-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(2.2rem, 6vw, 4.5rem);
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple), var(--neon-cyan));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
+  letter-spacing: 0.05em;
+  line-height: 1.1;
+  animation: logoGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes logoGlow {
+  from { filter: drop-shadow(0 0 10px rgba(0,212,255,0.5)); }
+  to { filter: drop-shadow(0 0 30px rgba(180,79,255,0.8)); }
+}
+
+.logo-sub {
+  font-size: clamp(0.9rem, 2vw, 1.2rem);
+  color: var(--neon-cyan);
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  margin-top: 0.5rem;
+  opacity: 0.8;
+}
+
+.pokeball-icon {
+  font-size: clamp(4rem, 8vw, 7rem);
+  animation: spinGlow 4s linear infinite;
+  margin: 0.5rem 0;
+  display: block;
+}
+
+@keyframes spinGlow {
+  0% { filter: drop-shadow(0 0 10px var(--neon-blue)); transform: rotate(0deg); }
+  50% { filter: drop-shadow(0 0 30px var(--neon-purple)); transform: rotate(180deg); }
+  100% { filter: drop-shadow(0 0 10px var(--neon-cyan)); transform: rotate(360deg); }
+}
+
+.play-btn {
+  position: relative;
+  z-index: 2;
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(1rem, 2.5vw, 1.4rem);
+  font-weight: 700;
+  padding: 1rem 3rem;
+  border: 2px solid var(--neon-blue);
+  background: rgba(0,212,255,0.1);
+  color: var(--neon-blue);
+  border-radius: 50px;
+  cursor: pointer;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  transition: all 0.3s ease;
+  backdrop-filter: var(--glass-blur);
+  overflow: hidden;
+}
+
+.play-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  border-radius: inherit;
+}
+
+.play-btn:hover {
+  color: #fff;
+  border-color: var(--neon-purple);
+  box-shadow: 0 0 30px rgba(0,212,255,0.5), 0 0 60px rgba(180,79,255,0.3);
+  transform: translateY(-3px) scale(1.03);
+}
+
+.play-btn:hover::before { opacity: 1; }
+.play-btn span { position: relative; z-index: 1; }
+
+/* ===== GLASS CARD ===== */
+.glass-card {
+  background: var(--bg-card);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-glow);
+  border-radius: 20px;
+  padding: 2rem;
+}
+
+/* ===== DASHBOARD ===== */
+#dashboard {
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 520px;
+}
+
+#dashboard .glass-card {
+  width: 100%;
+}
+
+.dash-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(1.1rem, 3vw, 1.6rem);
+  font-weight: 700;
+  text-align: center;
+  color: var(--neon-cyan);
+  margin-bottom: 1.5rem;
+  letter-spacing: 0.1em;
+}
+
+.section-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.option-grid {
+  display: grid;
+  gap: 0.6rem;
+  margin-bottom: 1.2rem;
+}
+
+.option-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+.option-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+.opt-btn {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 0.65rem 0.5rem;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-primary);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-align: center;
+  letter-spacing: 0.05em;
+}
+
+.opt-btn:hover {
+  border-color: var(--neon-blue);
+  background: rgba(0,212,255,0.1);
+  color: var(--neon-blue);
+  box-shadow: 0 0 12px rgba(0,212,255,0.25);
+}
+
+.opt-btn.active {
+  border-color: var(--neon-purple);
+  background: rgba(180,79,255,0.2);
+  color: #fff;
+  box-shadow: 0 0 15px rgba(180,79,255,0.4);
+}
+
+.pokemon-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 1rem;
+  background: rgba(0,0,0,0.2);
+  border-radius: 14px;
+  margin-bottom: 1.2rem;
+  min-height: 90px;
+}
+
+.poke-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.poke-sprite {
+  width: 64px;
+  height: 64px;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0 8px var(--neon-blue));
+  transition: filter 0.3s;
+}
+
+.poke-sprite.p2 {
+  filter: drop-shadow(0 0 8px var(--neon-purple));
+}
+
+.poke-name {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.vs-text {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.3rem;
+  font-weight: 900;
+  background: linear-gradient(to bottom, var(--neon-yellow), #ff8c00);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.start-btn {
+  width: 100%;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 0.9rem;
+  border: none;
+  background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple));
+  color: #fff;
+  border-radius: 12px;
+  cursor: pointer;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: all 0.3s ease;
+  margin-top: 0.5rem;
+}
+
+.start-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0,212,255,0.4), 0 0 60px rgba(180,79,255,0.2);
+}
+
+.shuffle-btn {
+  font-size: 0.8rem;
+  padding: 0.4rem 1rem;
+  border: 1px solid rgba(255,215,0,0.4);
+  background: rgba(255,215,0,0.05);
+  color: var(--neon-yellow);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 0.8rem;
+  display: block;
+  width: 100%;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+}
+
+.shuffle-btn:hover {
+  background: rgba(255,215,0,0.15);
+  box-shadow: 0 0 10px rgba(255,215,0,0.3);
+}
+
+/* ===== GAME SCREEN ===== */
+#game {
+  padding: 1rem;
+  width: 100%;
+  max-width: 600px;
+  gap: 0.8rem;
+}
+
+.game-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.8rem 1.2rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-glow);
+  border-radius: 16px;
+  backdrop-filter: var(--glass-blur);
+}
+
+.score-panel {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.score-item {
+  text-align: center;
+}
+
+.score-label {
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.score-val {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--neon-cyan);
+}
+
+.back-btn {
+  font-size: 0.75rem;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.05);
+  color: var(--text-muted);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Rajdhani', sans-serif;
+  letter-spacing: 0.1em;
+}
+
+.back-btn:hover { color: #fff; border-color: #fff; }
+
+/* ===== PLAYER INDICATORS ===== */
+.player-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 1rem;
+}
+
+.player-card {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.6rem 1rem;
+  background: var(--bg-card);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  backdrop-filter: var(--glass-blur);
+  transition: all 0.3s ease;
+}
+
+.player-card.active-turn {
+  border-color: var(--neon-blue);
+  box-shadow: 0 0 15px rgba(0,212,255,0.3);
+  background: rgba(0,212,255,0.08);
+}
+
+.player-card.p2-card.active-turn {
+  border-color: var(--neon-purple);
+  box-shadow: 0 0 15px rgba(180,79,255,0.3);
+  background: rgba(180,79,255,0.08);
+}
+
+.player-sprite-sm {
+  width: 44px;
+  height: 44px;
+  image-rendering: pixelated;
+}
+
+.player-info {
+  flex: 1;
+}
+
+.player-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+}
+
+.player-poke-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--neon-blue);
+}
+
+.p2-card .player-poke-name { color: var(--neon-purple); }
+
+.turn-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--neon-blue);
+  box-shadow: 0 0 8px var(--neon-blue);
+  animation: pulse 1s ease-in-out infinite;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.p2-card .turn-dot { background: var(--neon-purple); box-shadow: 0 0 8px var(--neon-purple); }
+.active-turn .turn-dot { opacity: 1; }
+
+@keyframes pulse {
+  0%,100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.6; }
+}
+
+/* ===== BOARD ===== */
+.board-wrap {
+  position: relative;
+  width: min(90vw, 360px);
+  aspect-ratio: 1;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+}
+
+.cell {
+  aspect-ratio: 1;
+  background: var(--bg-card);
+  border: 1px solid var(--border-glow);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  backdrop-filter: var(--glass-blur);
+  position: relative;
+  overflow: hidden;
+}
+
+.cell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(0,212,255,0.08), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.cell:hover:not(.taken)::before { opacity: 1; }
+.cell:hover:not(.taken) {
+  border-color: rgba(0,212,255,0.6);
+  box-shadow: 0 0 20px rgba(0,212,255,0.2);
+  transform: scale(1.04);
+}
+
+.cell.taken { cursor: default; }
+
+.cell img {
+  width: 70%;
+  height: 70%;
+  image-rendering: pixelated;
+  animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes popIn {
+  0% { transform: scale(0) rotate(-10deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+.cell.p1-cell {
+  border-color: rgba(0,212,255,0.5);
+  background: rgba(0,212,255,0.06);
+}
+
+.cell.p2-cell {
+  border-color: rgba(180,79,255,0.5);
+  background: rgba(180,79,255,0.06);
+}
+
+.cell.win-cell {
+  animation: winFlash 0.5s ease-in-out 3;
+}
+
+@keyframes winFlash {
+  0%,100% { transform: scale(1); }
+  50% { transform: scale(1.12); box-shadow: 0 0 30px var(--neon-yellow); border-color: var(--neon-yellow); }
+}
+
+/* ===== STATUS ===== */
+.status-bar {
+  width: 100%;
+  text-align: center;
+  padding: 0.6rem 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-glow);
+  border-radius: 12px;
+  backdrop-filter: var(--glass-blur);
+  font-size: 0.9rem;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ===== COMMENTARY ===== */
+.commentary-box {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  background: rgba(180,79,255,0.05);
+  border: 1px solid rgba(180,79,255,0.25);
+  border-radius: 12px;
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.7);
+  font-style: italic;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.4s ease;
+}
+
+.commentary-box::before { content: '🎙️'; flex-shrink: 0; }
+
+/* ===== RESET BTN ===== */
+.reset-btn {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 0.6rem 2rem;
+  border: 1px solid rgba(0,212,255,0.4);
+  background: rgba(0,212,255,0.08);
+  color: var(--neon-cyan);
+  border-radius: 10px;
+  cursor: pointer;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: all 0.25s ease;
+}
+
+.reset-btn:hover {
+  background: rgba(0,212,255,0.2);
+  box-shadow: 0 0 15px rgba(0,212,255,0.3);
+}
+
+/* ===== WIN OVERLAY ===== */
+#win-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5,5,16,0.92);
+  backdrop-filter: blur(12px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+  gap: 1.5rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+#win-overlay.show {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.win-sprite {
+  width: clamp(100px, 20vw, 140px);
+  height: clamp(100px, 20vw, 140px);
+  image-rendering: pixelated;
+  animation: winBounce 0.6s cubic-bezier(0.34,1.56,0.64,1) forwards;
+  filter: drop-shadow(0 0 20px var(--neon-yellow));
+}
+
+@keyframes winBounce {
+  0% { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.win-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(1.5rem, 5vw, 3rem);
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--neon-yellow), #ff8c00, var(--neon-purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: titleSlide 0.5s 0.2s ease both;
+}
+
+@keyframes titleSlide {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.win-sub {
+  font-size: clamp(1rem, 3vw, 1.4rem);
+  color: var(--text-muted);
+  animation: titleSlide 0.5s 0.35s ease both;
+}
+
+.win-actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  animation: titleSlide 0.5s 0.5s ease both;
+}
+
+.win-btn {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 0.7rem 1.8rem;
+  border-radius: 10px;
+  cursor: pointer;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: all 0.25s;
+}
+
+.win-btn.primary {
+  border: none;
+  background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple));
+  color: #fff;
+}
+
+.win-btn.secondary {
+  border: 1px solid rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.05);
+  color: var(--text-primary);
+}
+
+.win-btn:hover { transform: scale(1.05); }
+
+/* ===== PARTICLES ===== */
+.confetti-piece {
+  position: fixed;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 200;
+  animation: confettiFall linear forwards;
+}
+
+@keyframes confettiFall {
+  0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+}
+
+/* ===== LOADING ===== */
+.ai-thinking {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.dot-pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--neon-cyan);
+  animation: dotPulse 1.2s ease-in-out infinite;
+}
+.dot-pulse:nth-child(2) { animation-delay: 0.2s; }
+.dot-pulse:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes dotPulse {
+  0%,80%,100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 480px) {
+  .game-header { flex-wrap: wrap; gap: 0.5rem; }
+  .player-row { flex-direction: row; }
+  .player-card { padding: 0.5rem 0.7rem; }
+  .glass-card { padding: 1.3rem; }
+  .board-wrap { width: min(94vw, 340px); }
+}
+
+@media (max-height: 700px) {
+  #game { gap: 0.5rem; }
+  .player-sprite-sm { width: 36px; height: 36px; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<!-- LANDING -->
+<div id="landing" class="screen">
+  <div class="landing-mascots" id="mascots"></div>
+  <div class="landing-logo">
+    <span class="pokeball-icon">⚡</span>
+    <h1 class="logo-title">PokéBattle<br>Tac-Toe</h1>
+    <p class="logo-sub">Powered by Pollinations AI</p>
+  </div>
+  <button class="play-btn" onclick="goToDashboard()"><span>▶ Play Now</span></button>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="screen hidden">
+  <div class="glass-card">
+    <h2 class="dash-title">⚔️ Battle Setup</h2>
+
+    <p class="section-label">Game Mode</p>
+    <div class="option-grid cols-2">
+      <button class="opt-btn active" onclick="selectMode(this,'single')" id="mode-single">🤖 VS AI</button>
+      <button class="opt-btn" onclick="selectMode(this,'multi')" id="mode-multi">👥 Local 2P</button>
+    </div>
+
+    <div id="difficulty-section">
+      <p class="section-label">AI Difficulty</p>
+      <div class="option-grid cols-3">
+        <button class="opt-btn" onclick="selectDiff(this,'easy')">😴 Easy</button>
+        <button class="opt-btn active" onclick="selectDiff(this,'medium')">⚡ Medium</button>
+        <button class="opt-btn" onclick="selectDiff(this,'hard')">💀 Hard</button>
+      </div>
+    </div>
+
+    <p class="section-label">Pokémon Matchup</p>
+    <div class="pokemon-preview">
+      <div class="poke-slot">
+        <img id="p1-preview" class="poke-sprite" src="" alt="">
+        <span class="poke-name" id="p1-name">—</span>
+      </div>
+      <span class="vs-text">VS</span>
+      <div class="poke-slot">
+        <img id="p2-preview" class="poke-sprite p2" src="" alt="">
+        <span class="poke-name" id="p2-name">—</span>
+      </div>
+    </div>
+    <button class="shuffle-btn" onclick="shufflePokemon()">🔀 Shuffle Matchup</button>
+
+    <button class="start-btn" onclick="startGame()">⚡ START BATTLE</button>
+  </div>
+</div>
+
+<!-- GAME -->
+<div id="game" class="screen hidden">
+  <div class="game-header">
+    <button class="back-btn" onclick="goToDashboard()">◀ Menu</button>
+    <div class="score-panel">
+      <div class="score-item">
+        <div class="score-label">P1</div>
+        <div class="score-val" id="score-p1">0</div>
+      </div>
+      <div class="score-item">
+        <div class="score-label">Draw</div>
+        <div class="score-val" id="score-draw">0</div>
+      </div>
+      <div class="score-item">
+        <div class="score-label" id="p2-score-label">AI</div>
+        <div class="score-val" id="score-p2">0</div>
+      </div>
+    </div>
+    <div style="font-family:'Orbitron',sans-serif;font-size:0.65rem;color:var(--text-muted)" id="diff-badge"></div>
+  </div>
+
+  <div class="player-row">
+    <div class="player-card active-turn" id="p1-card">
+      <img class="player-sprite-sm" id="game-p1-sprite" src="" alt="">
+      <div class="player-info">
+        <div class="player-label">Player 1</div>
+        <div class="player-poke-name" id="game-p1-name"></div>
+      </div>
+      <div class="turn-dot"></div>
+    </div>
+    <div class="player-card p2-card" id="p2-card">
+      <div class="turn-dot"></div>
+      <div class="player-info" style="text-align:right">
+        <div class="player-label" id="p2-label">AI</div>
+        <div class="player-poke-name" id="game-p2-name"></div>
+      </div>
+      <img class="player-sprite-sm" id="game-p2-sprite" src="" alt="">
+    </div>
+  </div>
+
+  <div class="board-wrap">
+    <div class="board" id="board">
+      <!-- cells injected by JS -->
+    </div>
+  </div>
+
+  <div class="status-bar" id="status">Your turn!</div>
+  <div class="commentary-box" id="commentary">The battle is about to begin...</div>
+  <button class="reset-btn" onclick="resetGame()">↺ Rematch</button>
+</div>
+
+<!-- WIN OVERLAY -->
+<div id="win-overlay">
+  <img class="win-sprite" id="win-sprite" src="" alt="">
+  <div class="win-title" id="win-title">Victory!</div>
+  <div class="win-sub" id="win-sub"></div>
+  <div class="win-actions">
+    <button class="win-btn primary" onclick="resetGame()">⚡ Rematch!</button>
+    <button class="win-btn secondary" onclick="goToDashboard()">◀ Menu</button>
+  </div>
+</div>
+
+<script>
+// ===== CANVAS BACKGROUND =====
+const canvas = document.getElementById('bg-canvas');
+const ctx = canvas.getContext('2d');
+let W, H, particles = [], gridLines = [];
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  gridLines = [];
+  for (let x = 0; x < W; x += 80) gridLines.push({x, y: 0, vertical: true});
+  for (let y = 0; y < H; y += 80) gridLines.push({x: 0, y, vertical: false});
+}
+resize();
+window.addEventListener('resize', resize);
+
+function spawnParticle() {
+  particles.push({
+    x: Math.random() * W, y: Math.random() * H,
+    vx: (Math.random() - 0.5) * 0.4,
+    vy: (Math.random() - 0.5) * 0.4,
+    r: Math.random() * 2 + 0.5,
+    a: Math.random(),
+    color: Math.random() > 0.5 ? '0,212,255' : '180,79,255',
+    life: 1
+  });
+}
+
+for (let i = 0; i < 80; i++) spawnParticle();
+
+function drawBg() {
+  ctx.clearRect(0, 0, W, H);
+  // Grid
+  ctx.lineWidth = 0.3;
+  gridLines.forEach(l => {
+    ctx.strokeStyle = 'rgba(0,212,255,0.04)';
+    ctx.beginPath();
+    if (l.vertical) { ctx.moveTo(l.x, 0); ctx.lineTo(l.x, H); }
+    else { ctx.moveTo(0, l.y); ctx.lineTo(W, l.y); }
+    ctx.stroke();
+  });
+  // Particles
+  particles.forEach((p, i) => {
+    p.x += p.vx; p.y += p.vy;
+    if (p.x < 0 || p.x > W || p.y < 0 || p.y > H) { particles.splice(i, 1); spawnParticle(); return; }
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${p.color},${p.a * 0.6})`;
+    ctx.fill();
+  });
+  requestAnimationFrame(drawBg);
+}
+drawBg();
+
+// ===== FLOATING MASCOTS =====
+const mascotEmojis = ['⚡','🔥','💧','🌿','✨','🌸','💜','🌟'];
+const mascotsEl = document.getElementById('mascots');
+mascotEmojis.forEach((e, i) => {
+  const d = document.createElement('div');
+  d.className = 'float-poke';
+  d.textContent = e;
+  d.style.left = (10 + i * 12) + '%';
+  d.style.top = (10 + Math.sin(i) * 30 + 20) + '%';
+  d.style.animationDelay = (i * 1.1) + 's';
+  d.style.animationDuration = (6 + i * 0.7) + 's';
+  mascotsEl.appendChild(d);
+});
+
+// ===== STATE =====
+let gameMode = 'single';
+let difficulty = 'medium';
+let currentPair = null;
+let board = Array(9).fill(null);
+let currentPlayer = 'X';
+let gameOver = false;
+let scores = {p1: 0, p2: 0, draw: 0};
+const POKEMON_PAIRS = [
+  {p1:{name:'Pikachu',id:25},p2:{name:'Eevee',id:133}},
+  {p1:{name:'Charmander',id:4},p2:{name:'Squirtle',id:7}},
+  {p1:{name:'Bulbasaur',id:1},p2:{name:'Jigglypuff',id:39}},
+  {p1:{name:'Mewtwo',id:150},p2:{name:'Gengar',id:94}},
+  {p1:{name:'Snorlax',id:143},p2:{name:'Charizard',id:6}},
+  {p1:{name:'Lucario',id:448},p2:{name:'Gardevoir',id:282}},
+];
+
+function spriteUrl(id) {
+  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
+}
+
+// ===== NAVIGATION =====
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+
+function goToDashboard() {
+  document.getElementById('win-overlay').classList.remove('show');
+  if (!currentPair) shufflePokemon();
+  showScreen('dashboard');
+}
+
+function selectMode(btn, mode) {
+  gameMode = mode;
+  document.querySelectorAll('#dashboard .opt-btn').forEach(b => {
+    if (b.id && b.id.startsWith('mode-')) b.classList.remove('active');
+  });
+  btn.classList.add('active');
+  document.getElementById('difficulty-section').style.display = mode === 'single' ? '' : 'none';
+  document.getElementById('p2-score-label').textContent = mode === 'single' ? 'AI' : 'P2';
+}
+
+function selectDiff(btn, diff) {
+  difficulty = diff;
+  btn.parentElement.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+async function shufflePokemon() {
+  try {
+    const r = await fetch('/api/random-matchup');
+    currentPair = await r.json();
+  } catch {
+    currentPair = POKEMON_PAIRS[Math.floor(Math.random() * POKEMON_PAIRS.length)];
+  }
+  document.getElementById('p1-preview').src = spriteUrl(currentPair.p1.id);
+  document.getElementById('p2-preview').src = spriteUrl(currentPair.p2.id);
+  document.getElementById('p1-name').textContent = currentPair.p1.name;
+  document.getElementById('p2-name').textContent = currentPair.p2.name;
+}
+
+// ===== GAME INIT =====
+function startGame() {
+  if (!currentPair) { shufflePokemon().then(startGame); return; }
+  // Setup UI
+  document.getElementById('game-p1-sprite').src = spriteUrl(currentPair.p1.id);
+  document.getElementById('game-p2-sprite').src = spriteUrl(currentPair.p2.id);
+  document.getElementById('game-p1-name').textContent = currentPair.p1.name;
+  document.getElementById('game-p2-name').textContent = currentPair.p2.name;
+  document.getElementById('p2-label').textContent = gameMode === 'single' ? 'AI' : 'Player 2';
+  document.getElementById('p2-score-label').textContent = gameMode === 'single' ? 'AI' : 'P2';
+  document.getElementById('diff-badge').textContent = gameMode === 'single' ? difficulty.toUpperCase() : 'LOCAL';
+  scores = {p1: 0, p2: 0, draw: 0};
+  updateScoreUI();
+  resetGame(true);
+  showScreen('game');
+}
+
+function buildBoard() {
+  const b = document.getElementById('board');
+  b.innerHTML = '';
+  for (let i = 0; i < 9; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.dataset.index = i;
+    cell.addEventListener('click', () => handleClick(i));
+    b.appendChild(cell);
+  }
+}
+
+function resetGame(fresh = false) {
+  board = Array(9).fill(null);
+  currentPlayer = 'X';
+  gameOver = false;
+  document.getElementById('win-overlay').classList.remove('show');
+  buildBoard();
+  updateTurnUI();
+  setStatus('Your turn!');
+  setCommentary('The battle is about to begin...');
+  if (fresh) return;
+}
+
+// ===== GAMEPLAY =====
+async function handleClick(idx) {
+  if (gameOver || board[idx]) return;
+  if (gameMode === 'single' && currentPlayer === 'O') return;
+
+  placeMove(idx, currentPlayer);
+  const result = checkEnd();
+  if (result) return;
+
+  if (gameMode === 'single') {
+    setStatus('AI is thinking...');
+    showThinking();
+    await delay(600);
+    await aiMove();
+  }
+}
+
+function placeMove(idx, player) {
+  board[idx] = player;
+  const cell = document.querySelector(`.cell[data-index="${idx}"]`);
+  cell.classList.add('taken', player === 'X' ? 'p1-cell' : 'p2-cell');
+  const img = document.createElement('img');
+  img.src = player === 'X' ? spriteUrl(currentPair.p1.id) : spriteUrl(currentPair.p2.id);
+  img.alt = player === 'X' ? currentPair.p1.name : currentPair.p2.name;
+  cell.appendChild(img);
+  playSound(player);
+}
+
+async function aiMove() {
+  try {
+    const r = await fetch('/api/ai-move', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({board, difficulty, ai_mark:'O', human_mark:'X'})
+    });
+    const data = await r.json();
+    if (data.move !== null && data.move !== undefined) {
+      placeMove(data.move, 'O');
+      const result = checkEnd();
+      if (!result) {
+        currentPlayer = 'X';
+        updateTurnUI();
+        setStatus('Your turn!');
+        fetchCommentary('Player moved — AI responds!');
+      }
+    }
+  } catch(e) {
+    // Fallback: random
+    const empty = board.map((v,i)=>v?null:i).filter(v=>v!==null);
+    if (empty.length) {
+      const mv = empty[Math.floor(Math.random()*empty.length)];
+      placeMove(mv, 'O');
+      checkEnd();
+    }
+  }
+}
+
+function checkEnd() {
+  const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  for (const [a,b,c] of wins) {
+    if (board[a] && board[a]===board[b] && board[a]===board[c]) {
+      highlightWin([a,b,c]);
+      const winner = board[a];
+      if (winner === 'X') {
+        scores.p1++;
+        showWin(currentPair.p1, 'Victory!', `${currentPair.p1.name} wins!`);
+      } else {
+        scores.p2++;
+        const winnerPoke = currentPair.p2;
+        const label = gameMode === 'single' ? 'AI wins!' : 'Player 2 wins!';
+        showWin(winnerPoke, 'Defeated!', `${winnerPoke.name} ${label}`);
+      }
+      updateScoreUI();
+      gameOver = true;
+      return true;
+    }
+  }
+  if (board.every(c=>c)) {
+    scores.draw++;
+    updateScoreUI();
+    showWin(null, 'Draw!', "It's a tie — great battle!");
+    gameOver = true;
+    return true;
+  }
+  // Switch turn
+  currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+  updateTurnUI();
+  if (gameMode === 'multi') {
+    setStatus(`${currentPlayer === 'X' ? currentPair.p1.name : currentPair.p2.name}'s turn!`);
+  }
+  return false;
+}
+
+function highlightWin(cells) {
+  cells.forEach(i => {
+    document.querySelector(`.cell[data-index="${i}"]`).classList.add('win-cell');
+  });
+}
+
+function showWin(pokemon, title, sub) {
+  document.getElementById('win-title').textContent = title;
+  document.getElementById('win-sub').textContent = sub;
+  document.getElementById('win-sprite').src = pokemon ? spriteUrl(pokemon.id) : '⭐';
+  if (!pokemon) document.getElementById('win-sprite').style.display = 'none';
+  else document.getElementById('win-sprite').style.display = '';
+  setTimeout(() => {
+    document.getElementById('win-overlay').classList.add('show');
+    launchConfetti();
+  }, 600);
+}
+
+// ===== UI HELPERS =====
+function updateTurnUI() {
+  const p1Card = document.getElementById('p1-card');
+  const p2Card = document.getElementById('p2-card');
+  if (currentPlayer === 'X') {
+    p1Card.classList.add('active-turn');
+    p2Card.classList.remove('active-turn');
+  } else {
+    p2Card.classList.add('active-turn');
+    p1Card.classList.remove('active-turn');
+  }
+}
+
+function updateScoreUI() {
+  document.getElementById('score-p1').textContent = scores.p1;
+  document.getElementById('score-p2').textContent = scores.p2;
+  document.getElementById('score-draw').textContent = scores.draw;
+}
+
+function setStatus(msg) {
+  document.getElementById('status').innerHTML = msg;
+}
+
+function setCommentary(msg) {
+  document.getElementById('commentary').innerHTML = `<span></span>${msg}`;
+}
+
+function showThinking() {
+  setStatus(`<span style="display:flex;align-items:center;gap:8px;justify-content:center">${currentPair.p2.name} is thinking <span class="ai-thinking"><span class="dot-pulse"></span><span class="dot-pulse"></span><span class="dot-pulse"></span></span></span>`);
+}
+
+async function fetchCommentary(situation) {
+  try {
+    const r = await fetch('/api/commentary', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({situation, pokemon1: currentPair.p1.name, pokemon2: currentPair.p2.name})
+    });
+    const data = await r.json();
+    setCommentary(data.commentary);
+  } catch {
+    setCommentary('What a move! The tension is rising!');
+  }
+}
+
+// ===== CONFETTI =====
+function launchConfetti() {
+  const colors = ['#00d4ff','#b44fff','#ffd700','#00ffee','#ff6b6b'];
+  for (let i = 0; i < 60; i++) {
+    setTimeout(() => {
+      const piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      piece.style.left = Math.random() * 100 + 'vw';
+      piece.style.top = '-10px';
+      piece.style.background = colors[Math.floor(Math.random()*colors.length)];
+      piece.style.animationDuration = (1.5 + Math.random()*2) + 's';
+      piece.style.animationDelay = Math.random() * 0.5 + 's';
+      piece.style.width = piece.style.height = (5 + Math.random()*8) + 'px';
+      document.body.appendChild(piece);
+      setTimeout(() => piece.remove(), 4000);
+    }, i * 30);
+  }
+}
+
+// ===== SOUND =====
+function playSound(type) {
+  try {
+    const ctx2 = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx2.createOscillator();
+    const gain = ctx2.createGain();
+    osc.connect(gain); gain.connect(ctx2.destination);
+    osc.type = 'sine';
+    osc.frequency.value = type === 'X' ? 440 : 330;
+    gain.gain.value = 0.08;
+    osc.start();
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx2.currentTime + 0.3);
+    osc.stop(ctx2.currentTime + 0.3);
+  } catch {}
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ===== INIT =====
+goToDashboard();
+</script>
+</body>
+</html>
